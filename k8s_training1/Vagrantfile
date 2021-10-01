@@ -14,8 +14,8 @@ Vagrant.configure("2") do |config|
   # boxes at https://vagrantcloud.com/search.
   config.vm.box = "ubuntu/hirsute64"
   config.vm.box_version ='20210924.0.0'
-  config.vm.hostname = 'ted-k8s-training1-dev'
-  config.vm.define vm_name = 'ted-k8s-training1'
+  config.vm.hostname = 'ted-k8s-t1-dev'
+  config.vm.define vm_name = 'ted-k8s-t1'
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -36,7 +36,7 @@ Vagrant.configure("2") do |config|
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
   # config.vm.network "private_network", ip: "192.168.33.10"
-  config.vm.network :private_network, ip: "172.17.8.112"
+  # config.vm.network :private_network, ip: "172.17.8.112"
 
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
@@ -77,9 +77,13 @@ Vagrant.configure("2") do |config|
   #   apt-get update
   #   apt-get install -y apache2
   # SHELL
-  config.vm.provision "shell", inline: <<-SHELL
+  config.vm.provision "shell", privileged: false, inline: <<-SHELL
+    set -e -x -u
+    export DEBIAN_FRONTEND=noninteractive
+
     echo "================== Updating apt repository =================="
     sudo apt-get update
+
     echo "===== Installing apt-transport-https, ca-certificates, curl, gnupg and lsb-reelase ====="
     sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
@@ -100,19 +104,40 @@ Vagrant.configure("2") do |config|
     export K8S_VERSION="1.21.0"
     sudo apt-get install -y kubeadm=${K8S_VERSION}-00 kubectl=${K8S_VERSION}-00 kubelet=${K8S_VERSION}-00
     sudo apt-mark hold kubeadm kubectl kubelet
-    echo 'source <(kubectl completion bash)' >>~/.bashrc
+    # echo 'source <(kubectl completion bash)' >> $HOME/.bashrc
+    # source <(kubectl completion bash)
 
     # Disable swap
-    #https://github.com/kubernetes/kubernetes/issues/53533
+    # https://github.com/kubernetes/kubernetes/issues/53533
     echo "================== Disable swap =================="
     sudo swapoff -a && sudo sysctl -w vm.swappiness=0
     sudo sed '/vagrant--vg-swap/d' -i /etc/fstab
+
+    # Start Kubernetes Cluster
+    echo "================== Start Kubernetes Cluster =================="
+    sudo kubeadm init
+    # sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+    # mkdir -p $HOME/.kube
+    # sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    # sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+    # # Clone the k8s_training2 project from git
+    # git clone http://10.78.26.44:30000/Ted_Chien/k8s_training.git
+    # cd k8s_training1
+
+    # Install Calico to handle network policy
+    echo "================== Install Calico to handle network policy =================="
+    kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+    # Untaint the master node so we can deploy workers
+    echo "================== Untaint the master node so we can deploy workers for single node on VirtualBox VM =================="
+    kubectl taint nodes --all node-role.kubernetes.io/master-
 
     # Install bash-it
     echo "================== Installing bash-it =================="
     git clone --depth=1 https://github.com/Bash-it/bash-it.git ~/.bash_it
     bash ~/.bash_it/install.sh -s
 
-    echo "================== tedchien-k8s-https Provisioning Finished =================="
+    echo "================== ted-k8s-t1 Provisioning Finished =================="
   SHELL
 end
