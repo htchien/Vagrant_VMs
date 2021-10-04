@@ -81,14 +81,14 @@ Vagrant.configure("2") do |config|
     set -e -x -u
     export DEBIAN_FRONTEND=noninteractive
 
-    echo "================== Updating apt repository =================="
+    # echo "================== Updating apt repository =================="
     sudo apt-get update
 
-    echo "===== Installing apt-transport-https, ca-certificates, curl, gnupg and lsb-reelase ====="
+    # echo "================== Installing prerequisite components =================="
     sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
     # Install Docker
-    echo "================== Installing Docker =================="
+    # echo "================== Installing Docker =================="
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
     sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
     sudo apt-get update
@@ -97,7 +97,7 @@ Vagrant.configure("2") do |config|
     sudo usermod -aG docker $USER
     
     # Install Kubernetes
-    echo "================== Installing Kubernetes =================="
+    # echo "================== Installing Kubernetes =================="
     curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
     sudo add-apt-repository "deb [arch=amd64] https://apt.kubernetes.io/ kubernetes-xenial main"
     sudo apt-get update
@@ -108,24 +108,24 @@ Vagrant.configure("2") do |config|
 
     # Disable swap
     #https://github.com/kubernetes/kubernetes/issues/53533
-    echo "================== Disable swap =================="
+    # echo "================== Disable swap =================="
     sudo swapoff -a && sudo sysctl -w vm.swappiness=0
     sudo sed '/vagrant--vg-swap/d' -i /etc/fstab
 
     # Start Kubernetes Cluster
-    echo "================== Start Kubernetes Cluster =================="
+    # echo "================== Start Kubernetes Cluster =================="
     sudo kubeadm init
     # sudo kubeadm init --pod-network-cidr=192.168.0.0/16
-    # mkdir -p $HOME/.kube
-    # sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-    # sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    mkdir -p $HOME/.kube
+    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
     # Install Calico to handle network policy
-    echo "================== Install Calico to handle network policy =================="
+    # echo "================== Install Calico to handle network policy =================="
     kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
     # Untaint the master node so we can deploy workers
-    echo "================== Untaint the master node so we can deploy workers for single node on VirtualBox VM =================="
+    # echo "================== Untaint the master node so we can deploy workers for single node on VirtualBox VM =================="
     kubectl taint nodes --all node-role.kubernetes.io/master-
 
     # # Install Kubernetes Dashboard
@@ -133,7 +133,7 @@ Vagrant.configure("2") do |config|
     # kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.3.1/aio/deploy/recommended.yaml
 
     # Deploy nginx
-    echo "================== Deploy and create nginx service =================="
+    # echo "================== Deploy and create nginx service =================="
     kubectl create deployment nginx-deployment --image=nginx
     # kubectl create service nodeport nginx-service --tcp=80:80 
 
@@ -143,10 +143,10 @@ Vagrant.configure("2") do |config|
     # cd k8s_training2
 
     # Install bash-it
-    echo "================== Installing bash-it =================="
-    git clone --depth=1 https://github.com/Bash-it/bash-it.git ~/.bash_it
-    bash ~/.bash_it/install.sh -s
+    # echo "================== Installing bash-it =================="
+    # git clone --depth=1 https://github.com/Bash-it/bash-it.git ~/.bash_it
+    # bash ~/.bash_it/install.sh -s
 
-    echo "================== ted-k8s-t2 Provisioning Finished =================="
+    # echo "================== ted-k8s-t2 Provisioning Finished =================="
   SHELL
 end
