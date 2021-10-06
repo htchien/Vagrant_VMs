@@ -14,8 +14,8 @@ Vagrant.configure("2") do |config|
   # boxes at https://vagrantcloud.com/search.
   config.vm.box = "ubuntu/hirsute64"
   config.vm.box_version ='20210924.0.0'
-  config.vm.hostname = 'ted-k8s-t2-dev'
-  config.vm.define vm_name = 'ted-k8s-t2'
+  config.vm.hostname = 'ted-k8s-t3-dev'
+  config.vm.define vm_name = 'ted-k8s-t3'
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -128,11 +128,9 @@ Vagrant.configure("2") do |config|
     # echo "================== Deploy nginx HTTP server =================="
     # kubectl create deployment nginx-deployment --image=nginx
     kubectl apply -f /vagrant/nginx-deployment.yaml
+    # kubectl create service nodeport nginx-service --tcp=8080:80
+    kubectl apply -f /vagrant/nginx-service.yaml
 
-    # Deploy BusyBox Linux
-    # kubectl create deployment busybox-deployment --image=busybox -- sleep 3000
-    kubectl apply -f /vagrant/busybox-deployment.yaml
-
-    # echo "================== ted-k8s-t2 Provisioning Finished =================="
+    # echo "================== ted-k8s-t3 Provisioning Finished =================="
   SHELL
 end

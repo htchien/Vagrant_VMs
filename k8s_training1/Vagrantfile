@@ -36,7 +36,7 @@ Vagrant.configure("2") do |config|
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
   # config.vm.network "private_network", ip: "192.168.33.10"
-  # config.vm.network :private_network, ip: "172.17.8.112"
+  config.vm.network :private_network, ip: "172.17.8.112"
 
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
@@ -67,7 +67,6 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |vb|
     vb.cpus = "2"
     vb.memory = "4096"
-    # vb.nicpromisc1 = "allow-all"
   end
 
   # Enable provisioning with a shell script. Additional provisioners such as
@@ -81,14 +80,13 @@ Vagrant.configure("2") do |config|
     set -e -x -u
     export DEBIAN_FRONTEND=noninteractive
 
-    echo "================== Updating apt repository =================="
+    # echo "================== Updating apt repository =================="
     sudo apt-get update
 
-    echo "===== Installing apt-transport-https, ca-certificates, curl, gnupg and lsb-reelase ====="
+    # echo "===== Installing apt-transport-https, ca-certificates, curl, gnupg and lsb-reelase ====="
     sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
-    # Install Docker
-    echo "================== Installing Docker =================="
+    # echo "================== Installing Docker =================="
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
     sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
     sudo apt-get update
@@ -96,8 +94,7 @@ Vagrant.configure("2") do |config|
     sudo apt-get install -y docker-ce docker-ce-cli containerd.io
     sudo usermod -aG docker $USER
     
-    # Install Kubernetes
-    echo "================== Installing Kubernetes =================="
+    # echo "================== Installing Kubernetes =================="
     curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
     sudo add-apt-repository "deb [arch=amd64] https://apt.kubernetes.io/ kubernetes-xenial main"
     sudo apt-get update
@@ -105,38 +102,22 @@ Vagrant.configure("2") do |config|
     sudo apt-get install -y kubeadm=${K8S_VERSION}-00 kubectl=${K8S_VERSION}-00 kubelet=${K8S_VERSION}-00
     sudo apt-mark hold kubeadm kubectl kubelet
     # echo 'source <(kubectl completion bash)' >> $HOME/.bashrc
-    # source <(kubectl completion bash)
+    source <(kubectl completion bash)
 
-    # Disable swap
+    # echo "================== Disable swap =================="
     # https://github.com/kubernetes/kubernetes/issues/53533
-    echo "================== Disable swap =================="
     sudo swapoff -a && sudo sysctl -w vm.swappiness=0
     sudo sed '/vagrant--vg-swap/d' -i /etc/fstab
 
-    # Start Kubernetes Cluster
-    echo "================== Start Kubernetes Cluster =================="
-    sudo kubeadm init
-    # sudo kubeadm init --pod-network-cidr=192.168.0.0/16
-    # mkdir -p $HOME/.kube
-    # sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-    # sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    # echo "================== Start Kubernetes Cluster =================="
+    # sudo kubeadm init
+    sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+    mkdir -p $HOME/.kube
+    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-    # # Clone the k8s_training2 project from git
-    # git clone http://10.78.26.44:30000/Ted_Chien/k8s_training.git
-    # cd k8s_training1
-
-    # Install Calico to handle network policy
-    echo "================== Install Calico to handle network policy =================="
+    # echo "================== Install Calico to handle network policy =================="
     kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-
-    # Untaint the master node so we can deploy workers
-    echo "================== Untaint the master node so we can deploy workers for single node on VirtualBox VM =================="
-    kubectl taint nodes --all node-role.kubernetes.io/master-
-
-    # Install bash-it
-    echo "================== Installing bash-it =================="
-    git clone --depth=1 https://github.com/Bash-it/bash-it.git ~/.bash_it
-    bash ~/.bash_it/install.sh -s
 
     echo "================== ted-k8s-t1 Provisioning Finished =================="
   SHELL
