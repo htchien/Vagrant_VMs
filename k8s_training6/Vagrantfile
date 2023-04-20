@@ -66,7 +66,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provider "virtualbox" do |vb|
     vb.cpus = "2"
-    vb.memory = "4096"
+    vb.memory = "2048"
   end
 
   # Enable provisioning with a shell script. Additional provisioners such as
@@ -91,8 +91,8 @@ Vagrant.configure("2") do |config|
     sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
     sudo apt-get update
     export DOCKER_VERSION="5:20.10.13~3-0~ubuntu-jammy"
-    # export CONTAINER_VERSION="1.4.3-1"
-    sudo apt-get install -y docker-ce=$DOCKER_VERSION docker-ce-cli=$DOCKER_VERSION containerd.io #=$CONTAINER_VERSION
+    export CONTAINER_VERSION="1.5.10-1"
+    sudo apt-get install -y docker-ce=$DOCKER_VERSION docker-ce-cli=$DOCKER_VERSION containerd.io=$CONTAINER_VERSION
     sudo apt-mark hold docker-ce docker-ce-cli containerd.io
     sudo usermod -aG docker $USER
     
@@ -131,7 +131,7 @@ SCRIPT
     curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
     sudo add-apt-repository "deb [arch=amd64] https://apt.kubernetes.io/ kubernetes-xenial main"
     sudo apt-get update
-    export K8S_VERSION="1.23.4"
+    export K8S_VERSION="1.23.6"
     sudo apt-get install -y kubeadm=${K8S_VERSION}-00 kubectl=${K8S_VERSION}-00 kubelet=${K8S_VERSION}-00
     sudo apt-mark hold kubeadm kubectl kubelet
     echo 'source <(kubectl completion bash)' >> ~/.bashrc
