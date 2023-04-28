@@ -232,9 +232,7 @@ SCRIPT
     echo "================== Installing Ansible Requirements =================="
     sudo pip install -r /vagrant/requirements.txt
     
-    echo "================== addtional install - yq, Helm and NodeJS ======================="
-    sudo apt install -y jq
-
+    echo "================== addtional install - Helm and NodeJS ======================="
     sudo curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
     sudo sh -c "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main \ > /etc/apt/sources.list.d/helm.list"
     sudo apt-get update
