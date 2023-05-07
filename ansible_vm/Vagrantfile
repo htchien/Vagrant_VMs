@@ -98,8 +98,8 @@ SCRIPT
     cat /vagrant/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
     sudo mkdir -p /root/.ssh
     sudo cp /vagrant/.ssh/id_rsa /root/.ssh/id_rsa
-    sudo cp /vagrant/.ssh/authorized_keys /root/.ssh/authorized_keys
     sudo chmod 400 /root/.ssh/id_rsa
+    sudo cp $HOME/.ssh/authorized_keys /root/.ssh/authorized_keys
 
     echo "================== Install zsh =============================="
     sudo apt-get install -y zsh
