@@ -1,6 +1,6 @@
 yamllint==1.19.0
 apache-libcloud==2.2.1
-ansible==5.10.0
+ansible==7.0.0
 ansible-lint==5.4.0
 tox==3.11.1
 dopy==0.3.7
