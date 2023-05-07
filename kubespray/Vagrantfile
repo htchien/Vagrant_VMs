@@ -1,0 +1,157 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  # The most common configuration options are documented and commented below.
+  # For a complete reference, please see the online documentation at
+  # https://docs.vagrantup.com.
+
+  # Every Vagrant development environment requires a box. You can search for
+  # boxes at https://vagrantcloud.com/search.
+  config.vm.box = "ubuntu/focal64"
+
+  # Disable automatic box update checking. If you disable this, then
+  # boxes will only be checked for updates when the user runs
+  # `vagrant box outdated`. This is not recommended.
+  # config.vm.box_check_update = false
+
+  # Create a forwarded port mapping which allows access to a specific port
+  # within the machine from a port on the host machine. In the example below,
+  # accessing "localhost:8080" will access port 80 on the guest machine.
+  # NOTE: This will enable public access to the opened port
+  # config.vm.network "forwarded_port", guest: 22, host: 8222
+
+  # Create a forwarded port mapping which allows access to a specific port
+  # within the machine from a port on the host machine and only allow access
+  # via 127.0.0.1 to disable public access
+  # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+
+  # Create a private network, which allows host-only access to the machine
+  # using a specific IP.
+  # config.vm.network "private_network", ip: "192.168.33.10"
+  config.vm.network "private_network", ip: "172.17.8.112"
+  
+  # Create a public network, which generally matched to bridged network.
+  # Bridged networks make the machine appear as another physical device on
+  # your network.
+  # config.vm.network "public_network"
+
+  # Share an additional folder to the guest VM. The first argument is
+  # the path on the host to the actual folder. The second argument is
+  # the path on the guest to mount the folder. And the optional third
+  # argument is a set of non-required options.
+  # config.vm.synced_folder "../data", "/vagrant_data"
+
+  # Provider-specific configuration so you can fine-tune various
+  # backing providers for Vagrant. These expose provider-specific options.
+  # Example for VirtualBox:
+  #
+  config.vm.provider "virtualbox" do |vb|
+    # Display the VirtualBox GUI when booting the machine
+    # vb.gui = true
+  
+    # Customize the amount of memory on the VM:
+    vb.cpus = "2"
+    vb.memory = "2048"
+  end
+  #
+  # View the documentation for the provider you are using for more
+  # information on available options.
+
+  # Enable provisioning with a shell script. Additional provisioners such as
+  # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the
+  # documentation for more information about their specific syntax and use.
+  config.vm.provision "shell", privileged: false, inline: <<-SHELL
+    set -e -x -u
+    export DEBIAN_FRONTEND=noninteractive
+
+    echo "================== Updating apt repository =================="
+    sudo apt-get update
+
+    echo "================== set sshd configuration ===================="
+    sudo /bin/bash << 'SCRIPT'
+cat << 'EOF' >> /etc/ssh/sshd_config
+PubkeyAuthentication yes
+EOF
+SCRIPT
+    sudo systemctl daemon-reload
+    sudo systemctl restart sshd
+    mkdir -p /home/vagrant/.ssh
+    cp /vagrant/.ssh/id_rsa /home/vagrant/.ssh/id_rsa   # Please prepare your SSH keys in /vagrant/.ssh inadvance.
+    chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+    chmod 400 /home/vagrant/.ssh/id_rsa
+    cat /vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+    sudo mkdir -p /root/.ssh
+    sudo cp /vagrant/.ssh/id_rsa /root/.ssh/id_rsa
+    sudo chmod 400 /root/.ssh/id_rsa
+    sudo cp /home/vagrant/.ssh/authorized_keys /root/.ssh/authorized_keys
+
+    echo "================== Install zsh =============================="
+    sudo apt-get install -y zsh
+    sudo sh -c 'echo "LANG=\"zh_TW.UTF-8\"" > /etc/default/locale'
+    sudo locale-gen zh_TW zh_TW.UTF-8
+    sudo apt-get install -y language-pack-zh-hant
+
+    echo "================== Install Meslo Nerd Fonts ======================================"
+    sudo mkdir -p /usr/local/share/fonts/MesloNerdFonts
+    sudo wget https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf -P /usr/local/share/fonts/MesloNerdFonts
+    sudo wget https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf -P /usr/local/share/fonts/MesloNerdFonts
+    sudo wget https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf -P /usr/local/share/fonts/MesloNerdFonts
+    sudo wget https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf -P /usr/local/share/fonts/MesloNerdFonts
+
+    echo "================== Install oh-my-zsh and related plug-ins ========================"
+    sudo apt-get install -y fonts-powerline
+    wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+    sh install.sh
+    sudo cp -rfp /home/vagrant/.oh-my-zsh /root
+    sudo chown -R root:root /root/.oh-my-zsh
+
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
+        /home/vagrant/.oh-my-zsh/custom/themes/powerlevel10k
+    ln -s /home/vagrant/.oh-my-zsh/custom/themes/powerlevel10k /home/vagrant/.oh-my-zsh/themes/powerlevel10k
+    git clone https://github.com/zsh-users/zsh-completions \
+        /home/vagrant/.oh-my-zsh/custom/plugins/zsh-completions
+    git clone https://github.com/zsh-users/zsh-autosuggestions \
+        /home/vagrant/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting \
+        /home/vagrant/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+
+    sudo timedatectl set-timezone Asia/Taipei
+    sed -i 's|plugins=(git)|plugins=(git zsh-autosuggestions zsh-completions zsh-syntax-highlighting)|g' /home/vagrant/.zshrc
+    sed -i 's|ZSH_THEME="robbyrussell"|ZSH_THEME="powerlevel10k/powerlevel10k"|g' /home/vagrant/.zshrc
+    sudo chsh -s /bin/zsh vagrant
+
+    sudo git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
+        /root/.oh-my-zsh/custom/themes/powerlevel10k
+    sudo ln -s /root/.oh-my-zsh/custom/themes/powerlevel10k /root/.oh-my-zsh/themes/powerlevel10k
+    sudo git clone https://github.com/zsh-users/zsh-completions \
+        /root/.oh-my-zsh/custom/plugins/zsh-completions
+    sudo git clone https://github.com/zsh-users/zsh-autosuggestions \
+        /root/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+    sudo git clone https://github.com/zsh-users/zsh-syntax-highlighting \
+        /root/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+    sudo cp /home/vagrant/.zshrc /root/.zshrc
+    sudo chown root:root /root/.zshrc
+
+    git clone https://gitlab.com/m070888/installk8s/
+
+    echo "================== Installing Python components =================="
+    sudo apt-get install -y python3 python3-pip python3-dev
+
+    echo "================== Installing Ansible Requirements =================="
+    sudo pip install -r /vagrant/requirements.txt
+    
+    echo "================== addtional install - NodeJS ======================="
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    sudo apt-get install nodejs
+    node --version
+    npm version
+    sudo npm install -g typescript shx pkg
+
+    echo "================== Provisioning Finished =================="
+  SHELL
+end
