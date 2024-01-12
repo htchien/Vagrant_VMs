@@ -140,7 +140,7 @@ SCRIPT
     git clone https://gitlab.com/m070888/installk8s/
 
     echo "================== Installing Python components =================="
-    sudo apt-get install -y curl gnupg2 ssh jq git python3-dev python3-pip lsb-release 
+    sudo apt-get install -y curl gnupg2 jq git python3-dev python3-pip lsb-release 
 
     echo "================== Download keyrings ============================="
     sudo curl https://baltocdn.com/helm/signing.asc | sudo gpg --dearmor -o /usr/share/keyrings/helm.gpg > /dev/null
