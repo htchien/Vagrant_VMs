@@ -1,6 +1,6 @@
 yamllint==1.19.0
 apache-libcloud==2.2.1
-ansible==5.10.0
+ansible==8.5.0
 ansible-lint==5.4.0
 tox==3.11.1
 dopy==0.3.7
@@ -17,4 +17,5 @@ ipaddress
 jmespath>=1.0.1
 yq==3.1.1
 docker==6.0.1
-requests==2.26.0
+requests==2.32.0
+pyyaml<5.4.0
