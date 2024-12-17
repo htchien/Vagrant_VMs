@@ -79,9 +79,18 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
     set -e -x -u
     export DEBIAN_FRONTEND=noninteractive
+    sudo timedatectl set-timezone Asia/Taipei
+    export ARCH=$(dpkg --print-architecture)
 
     echo "================== Updating apt repository =================="
     sudo apt-get update
+
+    echo "================== Setting locale to zh-TW =================="
+    sudo sh -c 'echo "LANG=\"zh_TW.UTF-8\"" > /etc/default/locale'
+    sudo locale-gen zh_TW zh_TW.UTF-8
+    sudo apt-get install -y language-pack-zh-hant
+
+    echo "================== Installing basic packages =================="
     sudo apt-get install -y ca-certificates curl gnupg lsb-release
 
     echo "================== set sshd configuration ===================="
@@ -93,7 +102,9 @@ SCRIPT
     sudo systemctl daemon-reload
     sudo systemctl restart sshd
     mkdir -p $HOME/.ssh
-    cp /vagrant/.ssh/id_rsa $HOME/.ssh/id_rsa   # Please prepare your SSH keys in /vagrant/.ssh inadvance.
+    if [ -f /vagrant/.ssh/id_rsa ]; then
+      cp /vagrant/.ssh/id_rsa $HOME/.ssh/id_rsa   # Please prepare your SSH keys in /vagrant/.ssh inadvance.
+    fi
     chown vagrant:vagrant $HOME/.ssh/id_rsa
     chmod 400 $HOME/.ssh/id_rsa
     cat /vagrant/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
@@ -104,9 +115,6 @@ SCRIPT
 
     echo "================== Install zsh =============================="
     sudo apt-get install -y zsh
-    sudo sh -c 'echo "LANG=\"zh_TW.UTF-8\"" > /etc/default/locale'
-    sudo locale-gen zh_TW zh_TW.UTF-8
-    sudo apt-get install -y language-pack-zh-hant
 
     echo "================== Install Meslo Nerd Fonts ======================================"
     sudo mkdir -p /usr/local/share/fonts/MesloNerdFonts
@@ -132,7 +140,6 @@ SCRIPT
     git clone https://github.com/zsh-users/zsh-syntax-highlighting \
         ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 
-    sudo timedatectl set-timezone Asia/Taipei
     sed -i 's|plugins=(git)|plugins=(git zsh-autosuggestions zsh-completions zsh-syntax-highlighting)|g' $HOME/.zshrc
     sed -i 's|ZSH_THEME="robbyrussell"|ZSH_THEME="powerlevel10k/powerlevel10k"|g' $HOME/.zshrc
     sudo chsh -s /bin/zsh vagrant
@@ -160,28 +167,27 @@ SCRIPT
     echo "================== Installing containerd.io ==============="
     sudo mkdir -p /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
         $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo mkdir -p /etc/containerd
-    sudo apt-get update
-    sudo apt-get install -y containerd.io
-    sudo containerd config default > config.toml
-    sudo mv config.toml /etc/containerd
-    sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+    sudo apt-get update && sudo apt-get install -y containerd.io
+    sudo containerd config default | sudo tee /etc/containerd/config.toml
+    if grep -q 'SystemdCgroup = false' /etc/containerd/config.toml; then
+      sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+    fi
     sudo systemctl daemon-reload
     sudo systemctl enable containerd
     sudo systemctl restart containerd
 
     echo "================== Installing CNI plugins ================="
-    export CNI_VERSION="1.3.0"
-    wget https://github.com/containernetworking/plugins/releases/download/v${CNI_VERSION}/cni-plugins-linux-amd64-v${CNI_VERSION}.tgz
+    export CNI_VERSION="1.6.1"
+    wget https://github.com/containernetworking/plugins/releases/download/v${CNI_VERSION}/cni-plugins-linux-${ARCH}-v${CNI_VERSION}.tgz
     sudo mkdir -p /opt/cni/bin
-    sudo tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v${CNI_VERSION}.tgz
+    sudo tar Cxzvf /opt/cni/bin cni-plugins-linux-${ARCH}-v${CNI_VERSION}.tgz
 
     echo "================== Installing nerdctl ====================="
-    export NERDCTL_VERSION="1.5.0"
-    wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
-    sudo tar Cxzvvf /usr/local nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
+    export NERDCTL_VERSION="2.0.2"
+    wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-${ARCH}.tar.gz
+    sudo tar Cxzvvf /usr/local/bin nerdctl-${NERDCTL_VERSION}-linux-${ARCH}.tar.gz
 
     echo "================== Installing Kubernetes =================="
     sudo /bin/bash << 'SCRIPT'
@@ -193,17 +199,18 @@ SCRIPT
     sudo sysctl --system
     sudo modprobe br_netfilter
 
-    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/kubernetes.gpg
-    sudo sh -c "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/kubernetes.gpg] https://apt.kubernetes.io/ kubernetes-xenial main \ > /etc/apt/sources.list.d/kubernetes.list"
+    export K8S_MAIN_VERSION="1.32"
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v${K8S_MAIN_VERSION}/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg
+    sudo sh -c "echo deb [arch=${ARCH} signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v${K8S_MAIN_VERSION}/deb/ / \ > /etc/apt/sources.list.d/kubernetes.list"
     sudo apt-get update
-    export K8S_VERSION="1.28.0"
-    sudo apt-get install -y kubeadm=${K8S_VERSION}-00 kubectl=${K8S_VERSION}-00 kubelet=${K8S_VERSION}-00
+    export K8S_VERSION="${K8S_MAIN_VERSION}.0-1.1"
+    sudo apt-get install -y kubeadm=${K8S_VERSION} kubectl=${K8S_VERSION} kubelet=${K8S_VERSION}
     sudo apt-mark hold kubeadm kubectl kubelet
-    echo 'kubectl completion zsh | sudo tee /etc/bash_completion.d/kubectl > /dev/null' >> $HOME/.zshrc
 
     echo "================== Disable swap =================="
     # https://github.com/kubernetes/kubernetes/issues/53533
     sudo swapoff -a && sudo sysctl -w vm.swappiness=0
+    sudo sed -i '/swap/s/^/#/' /etc/fstab
     sudo sed '/vagrant--vg-swap/d' -i /etc/fstab
 
     echo "================== Start Kubernetes Cluster =================="
@@ -229,17 +236,32 @@ SCRIPT
     kubectl apply -f https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/admin/dns/dnsutils.yaml
 
     echo "================== Installing Python components =================="
-    sudo apt-get install -y python3 python3-pip python3-dev
+    sudo apt-get install -y python3-pip python3-venv python3-dev build-essential libssl-dev libffi-dev python3-setuptools
 
-    echo "================== Installing Ansible Requirements =================="
-    sudo pip install -r /vagrant/requirements.txt
-    
     echo "================== addtional install - Helm and NodeJS ======================="
     sudo curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
-    sudo sh -c "echo deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main \ > /etc/apt/sources.list.d/helm.list"
+    sudo sh -c "echo deb [arch=${ARCH} signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main \ > /etc/apt/sources.list.d/helm.list"
     sudo apt-get update
     sudo apt-get install helm
+    helm plugin install https://github.com/databus23/helm-diff
+
+    echo "================== Installing Ansible Requirements =================="
+    # conda create -n ansible -y
+    # conda activate ansible
+    python3 -m venv /home/vagrant/ansible
+    source /home/vagrant/ansible/bin/activate
+    pip install -r /vagrant/requirements.txt
+    deactivate
+    # conda deactivate
+ 
+    echo "================== Resize HDD partition size =================="
+    sudo parted --script --fix /dev/sda resizepart 3 100%
+    sudo partprobe /dev/sda
+    sudo pvresize /dev/sda3
+    sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+    sudo resize2fs /dev/ubuntu-vg/ubuntu-lv
 
     echo "================== ansible-vm Provisioning Finished =================="
+    sudo reboot now
   SHELL
 end
