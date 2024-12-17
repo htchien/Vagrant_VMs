@@ -18,6 +18,7 @@ Vagrant.configure("2") do |config|
   config.vm.hostname = 'ansible'
   vm_name = 'ansible-arm-vm'
   config.vm.define vm_name
+  config.disksize.size = "150GB" # by using vagrant-disksize plugin
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -69,8 +70,6 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |vb|
     vb.cpus = "2"
     vb.memory = "2048"
-    # vb.customize ["modifyhd", "--resize", 15 * 1024, "#{vb.name}.vdi"]
-    # vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 0, '--device', 0, '--type', 'hdd', '--medium', "#{vb.name}.vdi"]
 end
 
   # Enable provisioning with a shell script. Additional provisioners such as
@@ -192,7 +191,7 @@ SCRIPT
     echo "================== Installing nerdctl ====================="
     export NERDCTL_VERSION="2.0.2"
     wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-${ARCH}.tar.gz
-    sudo tar Cxzvvf /usr/local nerdctl-${NERDCTL_VERSION}-linux-${ARCH}.tar.gz
+    sudo tar Cxzvvf /usr/local/bin nerdctl-${NERDCTL_VERSION}-linux-${ARCH}.tar.gz
 
     echo "================== Installing Kubernetes =================="
     sudo /bin/bash << 'SCRIPT'
@@ -295,6 +294,14 @@ SCRIPT
     deactivate
     # conda deactivate
  
+    echo "================== Resize HDD partition size =================="
+    sudo parted --script --fix /dev/sda resizepart 3 100%
+    sudo partprobe /dev/sda
+    sudo pvresize /dev/sda3
+    sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+    sudo resize2fs /dev/ubuntu-vg/ubuntu-lv
+
     echo "================== ansible-vm Provisioning Finished =================="
-  SHELL
+    sudo reboot now
+    SHELL
 end
